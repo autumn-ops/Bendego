@@ -1,16 +1,14 @@
 import os
 import numpy as np
-from torch.utils.data import Dataset, DataLoader, Subset
+from torch.utils.data import Dataset, DataLoader, random_split, Subset
 import torchvision.transforms as transforms
 from PIL import Image
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
 from model import FastFPN, YOLOv8Backbone, resize_size
 
 
-# データセットの作成
 class SegmentationDataset(Dataset):
     def __init__(self, image_dir, mask_dir, transform=None, mask_transform=None):
         self.image_dir = image_dir
@@ -27,7 +25,7 @@ class SegmentationDataset(Dataset):
         mask_path = os.path.join(self.mask_dir, self.image_files[idx].replace('_image.jpg', '_mask.jpg'))
 
         image = Image.open(image_path).convert("RGB")
-        mask = Image.open(mask_path).convert("L")
+        mask = Image.open(mask_path).convert("L")  # Convert mask to grayscale
 
         if self.transform:
             image = self.transform(image)
@@ -37,7 +35,6 @@ class SegmentationDataset(Dataset):
         return image, mask
 
 
-# データセットをtrainとvalに分割
 def split_dataset(dataset, min_chunk_size=100, validation_split=0.2):
     num_images = len(dataset)
     if num_images <= min_chunk_size:
@@ -63,7 +60,6 @@ def split_dataset(dataset, min_chunk_size=100, validation_split=0.2):
     return train_chunks, val_chunks
 
 
-# 損失関数
 class DiceLoss(nn.Module):
     def __init__(self):
         super(DiceLoss, self).__init__()
@@ -79,7 +75,7 @@ class DiceLoss(nn.Module):
         return 1 - dice
 
 
-def training(image_dir, mask_dir, batch_size, num_epochs=30, patience=3):
+def chunked_training(image_dir, mask_dir, batch_size, num_epochs=30, patience=3):
     best_val_loss = float('inf')
     patience_counter = 0
 
@@ -92,14 +88,11 @@ def training(image_dir, mask_dir, batch_size, num_epochs=30, patience=3):
         transforms.ToTensor(),
     ])
 
-    # データセットの準備
     dataset = SegmentationDataset(image_dir, mask_dir, transform=image_transform, mask_transform=mask_transform)
     train_chunks, val_chunks = split_dataset(dataset)
 
-    # 学習の開始
     for chunk_idx, (train_chunk, val_chunk) in enumerate(zip(train_chunks, val_chunks)):
-        
-        # モデルのロード
+        # 各チャンクごとにモデルをリロード
         backbone = YOLOv8Backbone('yolov8n.pt')
         model = FastFPN()
         pt_file_path = "weight.pt"
@@ -117,13 +110,15 @@ def training(image_dir, mask_dir, batch_size, num_epochs=30, patience=3):
         model = model.to(device)
         model = model.float()
 
-        # 損失関数
         criterion = DiceLoss()
         optimizer = optim.Adam(model.parameters(), lr=1e-4)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
         train_loader = DataLoader(train_chunk, batch_size=batch_size, shuffle=True, num_workers=4)
         val_loader = DataLoader(val_chunk, batch_size=batch_size, shuffle=False, num_workers=4)
+
+        # チャンクの最初にモデルを保存
+        torch.save(model.state_dict(), f'weight_chunk_{chunk_idx}_initial.pt')
 
         for epoch in range(num_epochs):
             model.train()
@@ -173,9 +168,11 @@ def training(image_dir, mask_dir, batch_size, num_epochs=30, patience=3):
 
             scheduler.step()
 
+            # 改善された場合にのみモデルを保存
             if avg_val_loss < best_val_loss:
                 best_val_loss = avg_val_loss
                 patience_counter = 0
+                torch.save(model.state_dict(), f'weight_chunk_{chunk_idx}_epoch_{epoch}.pt')
                 if os.path.exists('weight.pt'):
                     if os.path.exists('old_weight.pt'):
                         os.remove('old_weight.pt')
@@ -199,7 +196,8 @@ def start(home_path, batch_size=16):
     image_dir = os.path.join(home_path, "image")
     mask_dir = os.path.join(home_path, "mask")
 
-    training(image_dir, mask_dir, batch_size)
-    
+    chunked_training(image_dir, mask_dir, batch_size)
+
+
     shutil.rmtree(home_path)
     
