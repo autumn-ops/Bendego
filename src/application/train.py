@@ -75,7 +75,7 @@ class DiceLoss(nn.Module):
         return 1 - dice
 
 
-def chunked_training(image_dir, mask_dir, batch_size, num_epochs=30, patience=3):
+def training(image_dir, mask_dir, batch_size, num_epochs=30, patience=3):
     best_val_loss = float('inf')
     patience_counter = 0
 
@@ -114,11 +114,8 @@ def chunked_training(image_dir, mask_dir, batch_size, num_epochs=30, patience=3)
         optimizer = optim.Adam(model.parameters(), lr=1e-4)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
-        train_loader = DataLoader(train_chunk, batch_size=batch_size, shuffle=True, num_workers=4)
-        val_loader = DataLoader(val_chunk, batch_size=batch_size, shuffle=False, num_workers=4)
-
-        # チャンクの最初にモデルを保存
-        torch.save(model.state_dict(), f'weight_chunk_{chunk_idx}_initial.pt')
+        train_loader = DataLoader(train_chunk, batch_size=batch_size, shuffle=True, num_workers=12)
+        val_loader = DataLoader(val_chunk, batch_size=batch_size, shuffle=False, num_workers=12)
 
         for epoch in range(num_epochs):
             model.train()
@@ -168,11 +165,22 @@ def chunked_training(image_dir, mask_dir, batch_size, num_epochs=30, patience=3)
 
             scheduler.step()
 
+            # エポック1は必ず保存
+            if epoch == 0:
+                best_val_loss = avg_val_loss
+                if os.path.exists('weight.pt'):
+                    if os.path.exists('old_weight.pt'):
+                        os.remove('old_weight.pt')
+                    os.rename('weight.pt', 'old_weight.pt')
+                torch.save(model.state_dict(), 'weight.pt')
+                print(f"Initial model saved at epoch {epoch + 1}, Val loss: {avg_val_loss}", flush=True)
+                sys.stdout.flush()
+
             # 改善された場合にのみモデルを保存
-            if avg_val_loss < best_val_loss:
+            elif avg_val_loss < best_val_loss:
                 best_val_loss = avg_val_loss
                 patience_counter = 0
-                torch.save(model.state_dict(), f'weight_chunk_{chunk_idx}_epoch_{epoch}.pt')
+                torch.save(model.state_dict(), f'weight_chunk_{chunk_idx}_epoch_{epoch + 1}.pt')
                 if os.path.exists('weight.pt'):
                     if os.path.exists('old_weight.pt'):
                         os.remove('old_weight.pt')
@@ -197,7 +205,6 @@ def start(home_path, batch_size=16):
     mask_dir = os.path.join(home_path, "mask")
 
     chunked_training(image_dir, mask_dir, batch_size)
-
 
     shutil.rmtree(home_path)
     
