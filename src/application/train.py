@@ -1,12 +1,14 @@
 import os
 import numpy as np
-from torch.utils.data import Dataset, DataLoader, random_split, Subset
+from torch.utils.data import Dataset, DataLoader, Subset
 import torchvision.transforms as transforms
 from PIL import Image
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from model import FastFPN, YOLOv8Backbone, resize_size
+import sys
+import shutil
 
 
 class SegmentationDataset(Dataset):
@@ -25,7 +27,7 @@ class SegmentationDataset(Dataset):
         mask_path = os.path.join(self.mask_dir, self.image_files[idx].replace('_image.jpg', '_mask.jpg'))
 
         image = Image.open(image_path).convert("RGB")
-        mask = Image.open(mask_path).convert("L")  # Convert mask to grayscale
+        mask = Image.open(mask_path).convert("L")  # マスクをグレースケールに変換
 
         if self.transform:
             image = self.transform(image)
@@ -75,6 +77,15 @@ class DiceLoss(nn.Module):
         return 1 - dice
 
 
+def save_model(model, path):
+    torch.save(model.state_dict(), path)
+    if os.path.exists(path):
+        if os.path.exists('old_weight.pt'):
+            os.remove('old_weight.pt')
+        os.rename(path, 'old_weight.pt')
+    torch.save(model.state_dict(), path)
+
+
 def training(image_dir, mask_dir, batch_size, num_epochs=30, patience=3):
     best_val_loss = float('inf')
     patience_counter = 0
@@ -91,31 +102,45 @@ def training(image_dir, mask_dir, batch_size, num_epochs=30, patience=3):
     dataset = SegmentationDataset(image_dir, mask_dir, transform=image_transform, mask_transform=mask_transform)
     train_chunks, val_chunks = split_dataset(dataset)
 
-    for chunk_idx, (train_chunk, val_chunk) in enumerate(zip(train_chunks, val_chunks)):
-        # 各チャンクごとにモデルをリロード
-        backbone = YOLOv8Backbone('yolov8n.pt')
-        model = FastFPN()
-        pt_file_path = "weight.pt"
-        state_dict = torch.load(pt_file_path, map_location=torch.device('cpu'))
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+    # 初回ロード
+    backbone = YOLOv8Backbone('yolov8n.pt')
+    model = FastFPN()
+    pt_file_path = "weight.pt"
+
+    if os.path.exists(pt_file_path):
+        state_dict = torch.load(pt_file_path, map_location=torch.device('cpu'))
         new_state_dict = {}
         for key, value in state_dict.items():
             new_key = key.replace('model.', '')
             new_state_dict[new_key] = value
-
         model.load_state_dict(new_state_dict, strict=False)
-        model.backbone = backbone
+        print("weight.ptから既存の重みをロードしました")
+    else:
+        print("既存の重みが見つからないため、新しいモデルで開始します")
 
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        model = model.to(device)
-        model = model.float()
+    model.backbone = backbone
+    model = model.to(device)
+    model = model.float()
 
-        criterion = DiceLoss()
-        optimizer = optim.Adam(model.parameters(), lr=1e-4)
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+    criterion = DiceLoss()
+    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
-        train_loader = DataLoader(train_chunk, batch_size=batch_size, shuffle=True, num_workers=12)
-        val_loader = DataLoader(val_chunk, batch_size=batch_size, shuffle=False, num_workers=12)
+    for chunk_idx, (train_chunk, val_chunk) in enumerate(zip(train_chunks, val_chunks)):
+        # デバッグ用のプリント文
+        print(f"バッチサイズ (型変換前): {batch_size}", flush=True)
+        batch_size = int(batch_size)  # バッチサイズが整数であることを確認
+        print(f"バッチサイズ (型変換後): {batch_size}", flush=True)
+        print(f"トレインチャンクサイズ: {len(train_chunk)}, バルチャンクサイズ: {len(val_chunk)}", flush=True)
+
+        train_loader = DataLoader(train_chunk, batch_size=batch_size, shuffle=True, num_workers=12, pin_memory=True)
+        val_loader = DataLoader(val_chunk, batch_size=batch_size, shuffle=False, num_workers=12, pin_memory=True)
+
+        # チャンクの最初にモデルを保存 (weight.ptが存在しない場合のみ)
+        if chunk_idx == 0 and not os.path.exists(pt_file_path):
+            save_model(model, 'weight.pt')
 
         for epoch in range(num_epochs):
             model.train()
@@ -138,12 +163,12 @@ def training(image_dir, mask_dir, batch_size, num_epochs=30, patience=3):
 
                 train_loss += loss.item()
 
-                print(f"Chunk {chunk_idx + 1}/{len(train_chunks)}, Epoch {epoch + 1}/{num_epochs}, Batch {batch_idx + 1}/{len(train_loader)}, Loss: {loss.item()}")
+                print(f"チャンク {chunk_idx + 1}/{len(train_chunks)}, エポック {epoch + 1}/{num_epochs}, バッチ {batch_idx + 1}/{len(train_loader)}, 損失: {loss.item()}")
                 sys.stdout.flush()
-
-            print(f"Chunk {chunk_idx + 1}/{len(train_chunks)}, Epoch {epoch + 1}/{num_epochs}, Average Train Loss: {train_loss / len(train_loader)}")
+                
+            print(f"チャンク {chunk_idx + 1}/{len(train_chunks)}, エポック {epoch + 1}/{num_epochs}, 平均トレイン損失: {train_loss / len(train_loader)}")
             sys.stdout.flush()
-
+            
             model.eval()
             val_loss = 0
             with torch.no_grad():
@@ -160,7 +185,7 @@ def training(image_dir, mask_dir, batch_size, num_epochs=30, patience=3):
                     val_loss += loss.item()
 
             avg_val_loss = val_loss / len(val_loader)
-            print(f"Chunk {chunk_idx + 1}/{len(train_chunks)}, Epoch {epoch + 1}/{num_epochs}, Average Val Loss: {avg_val_loss}")
+            print(f"チャンク {chunk_idx + 1}/{len(train_chunks)}, エポック {epoch + 1}/{num_epochs}, 平均バル損失: {avg_val_loss}")
             sys.stdout.flush()
 
             scheduler.step()
@@ -168,43 +193,33 @@ def training(image_dir, mask_dir, batch_size, num_epochs=30, patience=3):
             # エポック1は必ず保存
             if epoch == 0:
                 best_val_loss = avg_val_loss
-                if os.path.exists('weight.pt'):
-                    if os.path.exists('old_weight.pt'):
-                        os.remove('old_weight.pt')
-                    os.rename('weight.pt', 'old_weight.pt')
-                torch.save(model.state_dict(), 'weight.pt')
-                print(f"Initial model saved at epoch {epoch + 1}, Val loss: {avg_val_loss}", flush=True)
+                save_model(model, 'weight.pt')
+                print(f"エポック {epoch + 1} で初回モデルを保存, バル損失: {avg_val_loss}", flush=True)
                 sys.stdout.flush()
 
             # 改善された場合にのみモデルを保存
             elif avg_val_loss < best_val_loss:
                 best_val_loss = avg_val_loss
                 patience_counter = 0
-                torch.save(model.state_dict(), f'weight_chunk_{chunk_idx}_epoch_{epoch + 1}.pt')
-                if os.path.exists('weight.pt'):
-                    if os.path.exists('old_weight.pt'):
-                        os.remove('old_weight.pt')
-                    os.rename('weight.pt', 'old_weight.pt')
-                torch.save(model.state_dict(), 'weight.pt')
-                print(f"Save model for epoch {epoch + 1}, Val loss: {avg_val_loss}", flush=True)
+                save_model(model, 'weight.pt')
+                print(f"エポック {epoch + 1} でモデルを保存, バル損失: {avg_val_loss}", flush=True)
                 sys.stdout.flush()
+                
             else:
                 patience_counter += 1
-                print(f"No improvement. Epoch: {epoch + 1}, Patience counter: {patience_counter}", flush=True)
+                print(f"改善なし. エポック: {epoch + 1}, 忍耐カウンタ: {patience_counter}", flush=True)
                 sys.stdout.flush()
 
             if chunk_idx == len(train_chunks) - 1 and patience_counter >= patience:
-                print(f"It doesn't improve, so it stops early at epoch {epoch + 1} of the last chunk.", flush=True)
+                print(f"最後のチャンクのエポック {epoch + 1} で早期停止します。", flush=True)
                 sys.stdout.flush()
                 break
 
 
-def start(home_path, batch_size=16):
-
+def start(home_path, batch_size=4):
     image_dir = os.path.join(home_path, "image")
     mask_dir = os.path.join(home_path, "mask")
 
-    chunked_training(image_dir, mask_dir, batch_size)
+    training(image_dir, mask_dir, batch_size)
 
     shutil.rmtree(home_path)
-    
