@@ -64,7 +64,7 @@ class Analysis_data {
         
         for(int i=startline; i<=page[page.length-1]; i++) {
 
-    		Row row = sheet.getRow(i);//複数行使用している場合は、一番上の行
+    		Row row = sheet.getRow(i);
     		
     		for (Cell cell : row) {
                 int rowIndex = cell.getRowIndex(); // 行番号
