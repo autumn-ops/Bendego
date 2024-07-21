@@ -108,14 +108,14 @@ class createPDF {
     }
 
     private List<String> getTemplateFilesFromRes() {
-        Path resPath = Paths.get("res").toAbsolutePath();  // プロジェクトフォルダ内のresフォルダを指定
+        Path resPath = Paths.get("res").toAbsolutePath();
         List<String> templateFiles = new ArrayList<>();
         try {
             File resDirectory = new File(resPath.toString());
             File[] files = resDirectory.listFiles((dir, name) -> name.toLowerCase().endsWith(".xlsx"));
             if (files != null) {
                 for (File file : files) {
-                    templateFiles.add(file.toString());  // ファイル名だけをリストに追加
+                    templateFiles.add(file.toString());
                 }
             }
         } catch (Exception e) {
