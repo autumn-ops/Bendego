@@ -59,7 +59,7 @@ class Thumb implements Runnable {
 				
 				if(thum_list.size() == 0) {
 					thum_list.add(new Day_item(day, item, new ArrayList<File>()));
-					thum_list.getFirst().jpg.add(f);
+					thum_list.get(0).jpg.add(f);
 					continue;
 				}
 				if(!day_list.contains(day)) {
@@ -68,24 +68,24 @@ class Thumb implements Runnable {
 				
 				cont = containsOf(thum_list, item);
 				if(cont == -1) {
-					Collections.sort(thum_list.getLast().jpg, new CustomModifiedComparator());
-					if(thum_list.getLast().jpg.size()%3 != 0) {
-						for( int i=thum_list.getLast().jpg.size()%3; i<3; i++ ) {
-							thum_list.getLast().jpg.add(new File(" .jpg"));
+					Collections.sort(thum_list.get(thum_list.size()-1).jpg, new CustomModifiedComparator());
+					if(thum_list.get(thum_list.size()-1).jpg.size()%3 != 0) {
+						for( int i=thum_list.get(thum_list.size()-1).jpg.size()%3; i<3; i++ ) {
+							thum_list.get(thum_list.size()-1).jpg.add(new File(" .jpg"));
 						}
 					}
 					thum_list.add(new Day_item(day, item, new ArrayList<File>()));
-					thum_list.getLast().jpg.add(f);
+					thum_list.get(thum_list.size()-1).jpg.add(f);
 					
 				}else {
 					thum_list.get(cont).jpg.add(f);
 				}
 			}
 		}
-		Collections.sort(thum_list.getLast().jpg, new CustomModifiedComparator());
-		if(thum_list.getLast().jpg.size()%3 != 0) {
-			for( int i=thum_list.getLast().jpg.size()%3; i<3; i++ ) {
-				thum_list.getLast().jpg.add(new File(" .jpg"));
+		Collections.sort(thum_list.get(thum_list.size()-1).jpg, new CustomModifiedComparator());
+		if(thum_list.get(thum_list.size()-1).jpg.size()%3 != 0) {
+			for( int i=thum_list.get(thum_list.size()-1).jpg.size()%3; i<3; i++ ) {
+				thum_list.get(thum_list.size()-1).jpg.add(new File(" .jpg"));
 			}
 		}
 		

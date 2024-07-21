@@ -35,7 +35,7 @@ class MakePDF {
 					rec.setLowerLeftY((float) 808.32);
 			      PDPage page = new PDPage(rec);
 
-				  final InputStream is = getFileAsIOStream("OsakaMono.ttf");
+				  final InputStream is = getFileAsIOStream(Controller.font);
 				    	
 			      PDFont font = PDType0Font.load(document, is );
 			      
@@ -281,7 +281,7 @@ class MakePDF {
             .getResourceAsStream(fileName);
         
         if (ioStream == null) {
-            Controller.scpane_error.setValue("フォント'OsakaMono.ttf'が見つかりませんでした。" + Controller.newline);
+            Controller.scpane_error.setValue("フォント'"+Controller.font+"'が見つかりませんでした。" + Controller.newline);
             throw new IllegalArgumentException(fileName + " is not found");
         }
         return ioStream;

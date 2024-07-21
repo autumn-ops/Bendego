@@ -52,6 +52,11 @@
                   <Insets left="10.0" top="10.0" />
                </HBox.margin>
             </Button>
+            <Button fx:id="Setting_btn" defaultButton="true" mnemonicParsing="false" onAction="#Setting_acn" prefHeight="60.0" prefWidth="70.0" style="-fx-background-color: #000000; -fx-border-color: #fdd23e; -fx-background-radius: 10; -fx-border-radius: 10;" text="Setting" textAlignment="CENTER" textFill="WHITE">
+               <HBox.margin>
+                  <Insets left="10.0" top="10.0" />
+               </HBox.margin>
+            </Button>
          </children>
       </HBox>
    </top>

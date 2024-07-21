@@ -6,9 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
-
 class Analysis implements Runnable {
 	
 	private final String mode;
@@ -60,32 +57,18 @@ class Analysis implements Runnable {
                 
             } catch (Exception e) {
                 int currentIndex = i;
-                Controller.scpane_text.set("読み込めませんでした。\nファイル名の確認、シート名が原稿①になっているか確認してください\n");
-                javafx.application.Platform.runLater(() -> showErrorDialog(currentIndex));
+                Controller.scpane_text.set(f.getParentFile().getName() + " / " + f.getName()+"が読み込めませんでした。\nファイル名の確認、シート名が原稿①になっているか確認してください\n");
+                saveRestartPoint(currentIndex);
                 break;
             }
         }
-
-        // 処理が完了したら再開ポイントファイルを削除する
-        try {
+		try {
             Files.deleteIfExists(Paths.get(RESTART_FILE));
         } catch (IOException e) {
             System.err.println("Failed to delete restart point file");
         }
-        Controller.workin_hard.set("END");
 	}
 	
-    private void showErrorDialog(int index) {
-        Alert alert = new Alert(javafx.scene.control.Alert.AlertType.ERROR, "Error processing file. Please fix the issue and press OK to continue.", ButtonType.OK);
-        alert.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK) {
-                saveRestartPoint(index);
-                restartIndex = index;  // エラーしたファイルのインデックス
-                run();
-            }
-        });
-    }
-
     private void saveRestartPoint(int index) {
         try {
             Files.write(Paths.get(RESTART_FILE), Integer.toString(index).getBytes());

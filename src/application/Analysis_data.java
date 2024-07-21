@@ -17,6 +17,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+
 class Analysis_data {
 	private static Workbook excel;
 
@@ -24,14 +25,12 @@ class Analysis_data {
     
 	int getLine(File f) {
 		
-		String s = "原稿①";
+		String sheetName = "原稿①";
 		if(!Controller.txtf.equals("")) {
-			s = Controller.txtf;
+			sheetName = Controller.txtf;
 		}
 
-	    int startline = 11;
-	    
-	    int column = 9;
+	    int startline = 3;
 	    
 	    int num = 0;
 
@@ -52,50 +51,69 @@ class Analysis_data {
 	        }
 	        
         // シート名がわかっている場合
-        Sheet sheet = excel.getSheet(s);
+	    Sheet sheet = excel.getSheet(sheetName);
         int[] page = sheet.getRowBreaks();
-        
+
+        int item_index = 0;
+        int goods_index = 0;
+        int code_index = 0;
+
         int skipnum = 0;
         
         int score;
         
         for(int i=startline; i<=page[page.length-1]; i++) {
 
-        	//アイテムコードの行を取得
-        	if(skipnum == 0) {
-        		score = 0;
-        		//n行目 0~
-        		Row row = sheet.getRow(i);//複数行使用している場合は、一番上の行
-        		
-				String item = getValue(row.getCell(column-4)); //商品名
-				String goods = getValue(row.getCell(column-1));//商品記号
-				String code = getValue(row.getCell(column));   //アイテムコード
-				
-
-    	        if(item != "") {
-    	        	score += 2;
-    	        }
-    	        if(goods != "") {
-    	        	score += 1;
-    	        }
-    	        if(code != "") {
-    	        	score += 1;
-	        	}
-    	        if(score > 1) {
-    	        	num++;
-    	        }
-    	    }
+    		Row row = sheet.getRow(i);//複数行使用している場合は、一番上の行
+    		
+    		for (Cell cell : row) {
+                int rowIndex = cell.getRowIndex(); // 行番号
+                int colIndex = cell.getColumnIndex(); // 列番号
+                String cellValue = getValue(cell);
+                
+                //品名
+                if ("品名".equals(cellValue)) {
+                	item_index = colIndex;
+                }
+                //商品記号
+                else if ("商品記号".equals(cellValue)) {
+                	goods_index = colIndex;
+                }
+                //アイテムコード
+                else if ("アイテムコード（13桁）".equals(cellValue)) {
+                	code_index = colIndex;
+                	skipnum = rowIndex+1;
+                }
+                
+            }
+    		
+    		if(skipnum >= i) {
+    			continue;
+    		}
         	
-        	//原稿の最後
-        	if(i == page[page.length-1]) {
+    		score = 0;
+    		
+			String item = getValue(row.getCell(item_index)); //商品名
+			String goods = getValue(row.getCell(goods_index));//商品記号
+			String code = getValue(row.getCell(code_index));   //アイテムコード
+
+	        if(item != "") {
+	        	score += 2;
+	        }
+	        if(goods != "") {
+	        	score += 1;
+	        }
+	        if(code != "") {
+	        	score += 1;
         	}
+	        if(score > 1) {
+	        	num++;
+	        }
+        	
         	//ページの終端
         	else if(contains(page, i)) {
-        		i += startline;
+        		i += 5;
         	}
-        	//４行ごとにリセット
-        	if(skipnum == 3) {skipnum = 0;}
-        	else {skipnum++;}
         }
         excel.close();
 		} catch (EncryptedDocumentException | IOException e) {
@@ -108,17 +126,23 @@ class Analysis_data {
 	public static boolean contains(final int[] page, final int key) {
         return Arrays.stream(page).anyMatch(i -> i == key);
     }
-	
-	static String getValue(Cell cell) {
 
-		CellType cType = cell.getCellType();
-		switch(cType) {
-			case STRING:
-				return cell.getStringCellValue().replace(Controller.newline, "").replace(" ", "");
-	      	case NUMERIC:
-	      		return String.valueOf(cell.getNumericCellValue());
-	        default:
-	        	return "";
-	      }
-	}
+    static String getValue(Cell cell) {
+        if (cell == null) {
+            return "";
+        }
+        CellType cType = cell.getCellType();
+        switch (cType) {
+            case STRING:
+                return cell.getStringCellValue().replace("\n", "").replace(" ", "");
+            case NUMERIC:
+                return String.valueOf(cell.getNumericCellValue());
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                return cell.getCellFormula();
+            default:
+                return "";
+        }
+    }
 }

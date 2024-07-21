@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<AnchorPane minHeight="480.0" minWidth="720.0" prefHeight="480.0" prefWidth="720.0" style="-fx-background-color: #000000;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="application.Popup">
+   <children>
+      <Label text="環境設定" textFill="#fdd23e" AnchorPane.leftAnchor="10.0" AnchorPane.topAnchor="10.0">
+         <font>
+            <Font size="18.0" />
+         </font>
+      </Label>
+      <AnchorPane layoutY="445.0" style="-fx-border-color: #fdd23e;" AnchorPane.bottomAnchor="40.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="40.0">
+         <children>
+            <VBox prefHeight="200.0" prefWidth="100.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+               <children>
+                  <AnchorPane prefHeight="75.0" prefWidth="698.0">
+                     <VBox.margin>
+                        <Insets />
+                     </VBox.margin>
+                     <children>
+                        <Label alignment="CENTER" layoutX="14.0" layoutY="29.0" text="エクセルテンプレートを追加" textAlignment="CENTER" textFill="WHITE" AnchorPane.leftAnchor="20.0" />
+                        <Label fx:id="excel_lbl" alignment="CENTER" contentDisplay="CENTER" layoutX="466.0" layoutY="29.0" onDragDropped="#excel_dd" onDragOver="#excel_do" style="-fx-border-color: #fdd23e;" text="ここに 'Xlsx’ ファイルをドロップ" textFill="WHITE" AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="200.0" AnchorPane.rightAnchor="5.0" AnchorPane.topAnchor="5.0">
+                           <font>
+                              <Font size="13.0" />
+                           </font>
+                        </Label>
+                     </children>
+                     <padding>
+                        <Insets top="10.0" />
+                     </padding>
+                  </AnchorPane>
+                  <AnchorPane layoutX="10.0" layoutY="10.0" prefHeight="75.0" prefWidth="698.0">
+                     <children>
+                        <Label alignment="CENTER" layoutX="14.0" layoutY="29.0" text="学習に使う背景を追加" textAlignment="CENTER" textFill="WHITE" AnchorPane.leftAnchor="20.0" />
+                        <Label fx:id="back_lbl" alignment="CENTER" contentDisplay="CENTER" layoutX="466.0" layoutY="29.0" onDragDropped="#back_dd" onDragOver="#back_do" style="-fx-border-color: #fdd23e;" text="ここにJPGファイルをドロップ  7000x7000px以上にしてください。" textFill="WHITE" AnchorPane.bottomAnchor="5.0" AnchorPane.leftAnchor="200.0" AnchorPane.rightAnchor="5.0" AnchorPane.topAnchor="5.0">
+                           <font>
+                              <Font size="13.0" />
+                           </font>
+                        </Label>
+                     </children>
+                     <padding>
+                        <Insets top="10.0" />
+                     </padding>
+                  </AnchorPane>
+                  <AnchorPane layoutX="10.0" layoutY="85.0" prefHeight="75.0" prefWidth="698.0">
+                     <children>
+                        <Label alignment="CENTER" layoutX="14.0" layoutY="29.0" text="画像のカラースペース" textAlignment="CENTER" textFill="WHITE" AnchorPane.leftAnchor="20.0" />
+                        <ChoiceBox fx:id="color_box" layoutX="199.0" layoutY="25.0" prefWidth="150.0" style="-fx-background-color: black; -fx-border-color: #fdd23e; -fx-text-fill: #fdd23e;" />
+                     </children>
+                     <padding>
+                        <Insets top="10.0" />
+                     </padding>
+                  </AnchorPane>
+               </children>
+            </VBox>
+         </children>
+      </AnchorPane>
+      <VBox alignment="CENTER" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
+         <children>
+              <Button fx:id="closeButton" onAction="#close_action" prefHeight="10.0" prefWidth="100.0" style="-fx-background-color: black; -fx-border-color: #fdd23e;" text="閉じる" textFill="WHITE" />
+         </children>
+      </VBox>
+   </children>
+</AnchorPane>

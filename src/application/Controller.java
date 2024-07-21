@@ -1,7 +1,11 @@
 package application;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -49,6 +53,9 @@ public class Controller {
     
     @FXML
     private Button train_btn;  //トレーニング用ボタン
+    
+    @FXML
+    private Button Setting_btn;  //環境設定用ボタン
 
     @FXML
     private Label in_lbl;  //Input Panelのラベル
@@ -111,11 +118,17 @@ public class Controller {
     
     static boolean check_box;
 
+    private static final String SETTINGS_FILE = "settings.txt";
+    
 	Select_Mode check_mode = new Select_Mode();  //なんのモードか確認
 
 	static String separator = "\\";
 	
 	static String newline = "\n";
+	
+	static String colospace;
+	
+	static String font = "OsakaMono.ttf";
 
 	void switch_hub(String awitch) {
 		List<Button> list = new ArrayList<Button>();
@@ -136,6 +149,12 @@ public class Controller {
 		}
 		
 	}
+	
+	@FXML
+    void Setting_acn(ActionEvent event) {
+		Popup popup = new Popup();
+        popup.showPopup();
+    }
 
 	@FXML
     void train_acn(ActionEvent event) {
@@ -172,7 +191,9 @@ public class Controller {
     @FXML
     void pdf_acn(ActionEvent event) {  // EXCELファイルをPDFに変換　行数も計測
     	mode = "PDF";
-    	txt_title.setText("シート名");
+    	Path p1 = Paths.get("");
+    	Path p2 = p1.toAbsolutePath();
+    	txt_title.setText(p2.toString());
     	txt_field.setPromptText("読み込むシート名が'原稿①'ではない場合、入力");
     	switch_hub(mode);
     }
@@ -326,16 +347,34 @@ public class Controller {
         assert txt_field != null : "fx:id=\"txt_field\" was not injected: check your FXML file 'Viewer.fxml'.";
         assert txt_title != null : "fx:id=\"txt_title\" was not injected: check your FXML file 'Viewer.fxml'.";
         assert work_details != null : "fx:id=\"work_details\" was not injected: check your FXML file 'Viewer.fxml'.";
+        
+        if(Files.exists(Paths.get("Analysis_restart_point.txt"))) {
+        	try {
+	            Files.deleteIfExists(Paths.get("Analysis_restart_point.txt"));
+	        } catch (IOException e) {
+	            System.err.println("Failed to delete restart point file");
+	        }
+        }
 
-        in_lbl.setText("Drop\nInput\nHere");
-        out_lbl.setText("Drop\nOutput\nHere");
+        if(Files.exists(Paths.get("Sort_restart_point.txt"))) {
+        	try {
+	            Files.deleteIfExists(Paths.get("Sort_restart_point.txt"));
+	        } catch (IOException e) {
+	            System.err.println("Failed to delete restart point file");
+	        }
+        }
+
+        in_lbl.setText("Drop"+newline+"Input"+newline+"Here");
+        out_lbl.setText("Drop"+newline+"Output"+newline+"Here");
+        
+        colospace = loadSettings();
         
         scpane_text.addListener((observableValue, oldValue, newValue) -> {
         	Text newlbl = new Text(newValue);
         	newlbl.setStyle("-fx-fill: white;");
         	Platform.runLater(new Runnable() {
                 @Override public void run() {
-                	scrollpane.getChildren().addFirst(newlbl);
+                	scrollpane.getChildren().add(0, newlbl);
                 }
         	});
         });
@@ -345,7 +384,7 @@ public class Controller {
         	newlbl.setStyle("-fx-text-fill: red;");
         	Platform.runLater(new Runnable() {
                 @Override public void run() {
-                	scrollpane.getChildren().addFirst(newlbl);
+                	scrollpane.getChildren().add(0, newlbl);
                 }
         	});
         });
@@ -366,5 +405,28 @@ public class Controller {
         	});
         });
 
+    }
+    
+    public static String loadSettings() {
+        String[] settings = new String[2];
+        try {
+            File settingsFile = new File(SETTINGS_FILE);
+            if (settingsFile.exists()) {
+                List<String> lines = Files.readAllLines(settingsFile.toPath());
+                for (String line : lines) {
+                    String[] parts = line.split("=");
+                    if (parts.length == 2) {
+                        if (parts[0].equals("ColorSpace")) {
+                            settings[0] = parts[1];
+                        } else {
+                        	
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return settings[0];
     }
 }

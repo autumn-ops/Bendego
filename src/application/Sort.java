@@ -1,11 +1,14 @@
 package application;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.List;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -37,6 +40,8 @@ class Sort implements Runnable {
 		DumpFile df = new DumpFile();
 		list = df.run(inPath);
 
+		String color = loadSettings();
+   	 
 		//名前の確認
 		if(Controller.check_box == false){
 			Controller.workin_hard.set("名前の確認");
@@ -112,10 +117,15 @@ class Sort implements Runnable {
 				System.out.println(e);
 				javafx.application.Platform.runLater(() -> showErrorDialog(currentIndex));
 			}
-			
 
-       	 	InputStream is = getFileAsIOStream("AdobeRGB1998.icc");
-       	 
+	   	 	InputStream is = null;
+			try {
+				is = getFileAsIOStream(color);
+			} catch (FileNotFoundException e) {
+		        System.err.println(color+"を読み込めませんでした。");
+				e.printStackTrace();
+			}
+			
 			//カラーチップの加工
 			if(file_list.get(i).getName().substring(file_list.get(i).getName().lastIndexOf("_"), file_list.get(i).getName().length()).equals("_c.jpg")) {
 				try {
@@ -153,15 +163,10 @@ class Sort implements Runnable {
 		}
 	}
 	
-	private InputStream getFileAsIOStream(final String fileName) {
-        InputStream ioStream = this.getClass()
-            .getClassLoader()
-            .getResourceAsStream(fileName);
+	private InputStream getFileAsIOStream(String name) throws FileNotFoundException {
+        File file = new File("res/"+name);
+        InputStream ioStream = new FileInputStream(file);
         
-        if (ioStream == null) {
-            Controller.scpane_error.setValue("AdobeRGB1998.iccが見つかりませんでした。" + Controller.newline);
-            throw new IllegalArgumentException(fileName + " is not found");
-        }
         return ioStream;
     }
 
@@ -196,5 +201,27 @@ class Sort implements Runnable {
             }
         }
         return 0;
+    }
+    public static String loadSettings() {
+        String[] settings = new String[2];
+        try {
+            File settingsFile = new File("settings.txt");
+            if (settingsFile.exists()) {
+                List<String> lines = Files.readAllLines(settingsFile.toPath());
+                for (String line : lines) {
+                    String[] parts = line.split("=");
+                    if (parts.length == 2) {
+                        if (parts[0].equals("ColorSpace")) {
+                            settings[0] = parts[1];
+                        } else {
+                        	
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return settings[0].replace(" ", "");
     }
 }

@@ -40,7 +40,7 @@ class Count_PDF {
             .getResourceAsStream(fileName);
         
         if (ioStream == null) {
-            Controller.scpane_error.setValue("フォント'OsakaMono.ttf'が見つかりませんでした。" + Controller.newline);
+            Controller.scpane_error.setValue("フォント'"+Controller.font+"'が見つかりませんでした。" + Controller.newline);
             throw new IllegalArgumentException(fileName + " is not found");
         }
         return ioStream;
@@ -51,7 +51,7 @@ class Count_PDF {
         PDPage page = new PDPage();
         document.addPage(page);
         
-        final InputStream is = getFileAsIOStream("OsakaMono.ttf");
+        final InputStream is = getFileAsIOStream(Controller.font);
         PDFont font = PDType0Font.load(document, is );
 
         PDPageContentStream contentStream = new PDPageContentStream(document, page);
