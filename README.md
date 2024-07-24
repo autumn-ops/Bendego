@@ -26,10 +26,12 @@ ECサイトのデータを作成するためのアプリ
 ・javafx: 21
 ・numpy
 ・torch
+・torchvision
 ・pillow
 ・apache
 ・cv2
 ・matplotlib
+・ultralytics
 
 
 # 学習に使うデータ
